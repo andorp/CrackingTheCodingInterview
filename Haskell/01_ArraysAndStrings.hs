@@ -48,7 +48,7 @@ isPermutation :: String -> String -> Bool
 isPermutation s t | length s /= length t = False
 isPermutation s t = runST $ do
   
-  letters <- newSTArray (0,256) 0
+  letters <- newSTArray (0,256) (0 :: Int)
   
   forM s $ \c -> do
     let n = ord c
@@ -104,8 +104,9 @@ exercise1_5 = do
 -- is 4 bytes, write a method to rotate the image by 90 degress. Can you
 -- do this in place?
 
-rotate :: Int -> STArray s (Int,Int) Int -> ST s ()
-rotate n matrix = void $ do
+rotate :: STArray s (Int,Int) Int -> ST s ()
+rotate matrix = void $ do
+  (_,(n,_)) <- getBounds matrix
   forM [0 .. n `div` 2 - 1] $ \layer -> do
     let first = layer
     let last = n - 1 - layer
@@ -117,6 +118,37 @@ rotate n matrix = void $ do
       matrix @: (last, last-offset)  >>= writeArray matrix (last-offset, first)
       matrix @: (i, last)            >>= writeArray matrix (last, last-offset)
       writeArray matrix (i, last) top
+
+-- Exercise 1.7
+-- ============
+-- Write an algorithm such that if an element is an MxN matrix is 0,
+-- its entire row and column are set to 0
+
+setZeroes :: STArray s (Int, Int) Int -> ST s ()
+setZeroes matrix = void $ do
+
+  -- Collect which rows and columns need to be cleared
+  (_,(n,m)) <- getBounds matrix
+  row    <- newSTArray (0,n) False
+  column <- newSTArray (0,m) False
+  forM_ [(i,j) | i <- [0..n], j <- [0..m]] $ \idx@(i,j) -> do
+    x <- matrix @: idx
+    when (x == 0) $ do
+      writeArray row    i True
+      writeArray column j True
+
+  -- Clear rows
+  let nullifyRow row = forM_ [0..m] $ \j -> writeArray matrix (row,j) 0
+  forM_ [0..n] $ \i -> do
+    clear <- row @: i
+    when clear $ nullifyRow i
+
+  -- Clear columns
+  let nullifyColumn column = forM_ [0..n] $ \i -> writeArray matrix (i,column) 0
+  forM_ [0..m] $ \j -> do
+    clear <- column @: j
+    when clear $ nullifyColumn j
+
 
 -- Exercise 1.8
 -- ============
