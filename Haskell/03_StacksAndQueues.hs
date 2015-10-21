@@ -79,3 +79,61 @@ enQueue = modify . enqueue
 deQueue :: QProgram q (Maybe q)
 deQueue = state (cross . dequeue) where
   cross (f,s) = (s,f)
+
+-- Exercise 3.7
+-- ============
+
+-- * Animal shelter
+
+type Name = String
+
+type TimeStamp = Int
+
+newtype Dog = Dog (Name,TimeStamp)
+newtype Cat = Cat (Name,TimeStamp)
+
+class TimeStamped t where
+  timeStamp :: t -> TimeStamp
+
+instance TimeStamped Dog where
+  timeStamp (Dog (_,t)) = t 
+
+instance TimeStamped Cat where
+  timeStamp (Cat (_,t)) = t 
+
+type Animal = Either Dog Cat
+
+class IsAnimal a where
+  animal :: a -> Animal
+
+instance IsAnimal Dog where
+  animal = Left 
+
+instance IsAnimal Cat where
+  animal = Right
+
+data Shelter = Shelter {
+    dogs :: [Dog]
+  , cats :: [Cat]
+  }
+
+enqueueAnimal :: (IsAnimal a) => a -> Shelter -> Shelter
+enqueueAnimal = enqueue . animal where
+  enqueue (Left dog)  (Shelter dogs cats) = Shelter (dog:dogs) cats
+  enqueue (Right cat) (Shelter dogs cats) = Shelter dogs (cat:cats)
+
+deQueueCat :: Shelter -> (Maybe Cat, Shelter)
+deQueueCat (Shelter dogs (c:cats)) = (Just c, Shelter dogs cats)
+deQueueCat (Shelter dogs [])       = (Nothing, Shelter dogs [])
+
+deQueueDog :: Shelter -> (Maybe Dog, Shelter)
+deQueueDog (Shelter (d:dogs) cats) = (Just d, Shelter dogs cats)
+deQueueDog (Shelter [] cats)       = (Nothing,Shelter []   cats)
+
+deQueueAnimal :: Shelter -> (Maybe Animal, Shelter)
+deQueueAnimal s@(Shelter [] [])     = (Nothing, s)
+deQueueAnimal (Shelter (d:dogs) []) = (Just $ animal d, Shelter dogs [])
+deQueueAnimal (Shelter [] (c:cats)) = (Just $ animal c, Shelter [] cats)
+deQueueAnimal (Shelter ds@(d:dogs) cs@(c:cats))
+  | timeStamp d < timeStamp c = (Just $ animal d, Shelter dogs cs)
+  | otherwise                 = (Just $ animal c, Shelter ds cats)
