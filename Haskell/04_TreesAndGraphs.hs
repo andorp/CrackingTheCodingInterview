@@ -151,3 +151,5 @@ balancedLCont t = maybe False (const True) $ go (Just 0) [(Just 0, t)] where
   checkBalanced l r = join (cb <$> l <*> r)
     where cb l r | l - r < 2 = Just $ (max l r)
                  | otherwise = Nothing
+
+inc = (+1)
