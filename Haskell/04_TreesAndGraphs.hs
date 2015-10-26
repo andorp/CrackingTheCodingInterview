@@ -9,9 +9,14 @@ import           Control.Monad.Trans.State
 import           Data.Array ((!))
 import           Data.Graph (Vertex)
 import qualified Data.Graph as G
+import           Data.Maybe
+import           Data.Map (Map)
+import qualified Data.Map as Map
 import           Data.Set (Set)
 import qualified Data.Set as Set
-import           Queue
+
+import           ShortCut
+import qualified Queue
 
 data Graph node = Graph { graph :: G.Graph, vertexToNode :: Vertex -> node }
 
@@ -43,8 +48,7 @@ bfs_search
 bfs_search visitor (Graph graph node) start =
   evalStateT (bfs start) emptyState where
 
-  cross (f,s)   = (s,f)
-  adjacent v = graph ! v
+  adjacents v = graph ! v
   visit = lift . visitor
 
   emptyState      = (Set.empty, Queue.empty)
@@ -63,7 +67,7 @@ bfs_search visitor (Graph graph node) start =
 
     while (not <$> isEmpty) $ do
       r <- dequeue
-      forM_ (adjacent vertex) $ \n -> do
+      forM_ (adjacents vertex) $ \n -> do
         visited <- isVisited n
         unless visited $ do
           markAsVisited n
@@ -104,7 +108,7 @@ balanced = maybe False (const True) . go where
   
   checkBalanced l r
     | l - r < 2 = Just $ (max l r + 1)
-    | otherwise = Nothing -}
+    | otherwise = Nothing
 
 -- http://stackoverflow.com/questions/21205213/haskell-tail-recursion-version-of-depth-of-binary-tree
 
@@ -115,7 +119,7 @@ balancedCont t = maybe False (const True) $ go t id where
   go (Node _ l r) k =
     go l $ \vl ->
     go r $ \vr ->
-    k (inc <$> join $ checkBalanced <$> vl <*> vr)
+    k (inc <$> (join $ checkBalanced <$> vl <*> vr))
 
   checkBalanced l r
     | l - r < 2 = Just $ (max l r)
@@ -134,7 +138,7 @@ balancedTCont = maybe False (const True) . go TcEmpty where
   go k (Node _ l r) = go (TcFunL r k) l
 
   eval (TcFunL r  k) d = go (TcFunR d k) r
-  eval (TcFunR dl k) d = eval k (inc <$> join $ checkBalanced <$> dl <*> d)
+  eval (TcFunR dl k) d = eval k (inc <$> (join $ checkBalanced <$> dl <*> d))
   eval TcEmpty       d = d
 
   checkBalanced l r
@@ -152,4 +156,44 @@ balancedLCont t = maybe False (const True) $ go (Just 0) [(Just 0, t)] where
     where cb l r | l - r < 2 = Just $ (max l r)
                  | otherwise = Nothing
 
+inc :: (Num a) => a -> a
 inc = (+1)
+
+-- Exercise 4.2
+-- ============
+-- Given a directed graph, design an algorithm to find out whetever there is
+-- a route between two nodes
+
+data SearchState = Visiting | Visited | Unvisited
+  deriving (Eq, Show)
+
+search :: (Functor m, Monad m) => Graph node -> Vertex -> Vertex -> m Bool
+search g start end | start == end = return True
+search (Graph graph _) start end  = runShortCutT' $ evalStateT bfs emptyState
+  where
+    adjacents v = graph ! v
+
+    emptyState  = (Queue.empty, Map.empty)
+
+    isempty = gets $ Queue.isEmpty . fst
+    markNodeAs   node state = modify $ second (Map.insert node state)
+    getNodeState node       = gets   $ fromMaybe Unvisited . Map.lookup node . snd
+    enqueue      node       = modify $ first (Queue.enqueue node)
+    dequeue = state $ \(q, sm) ->
+      let (q', v) = Queue.dequeue q
+      in (v, (q', sm))
+
+    bfs = do
+      enqueue start
+      while (not <$> isempty) $ do
+        mnode <- dequeue
+        when (isJust mnode) $ do
+          let u = fromJust mnode
+          forM_ (adjacents u) $ \v -> do
+            state <- getNodeState v
+            when (state == Unvisited) $ do
+              when (v == end) . lift $ final True
+              markNodeAs v Visiting
+              enqueue v
+          markNodeAs u Visited
+      return False
