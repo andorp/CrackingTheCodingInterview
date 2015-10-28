@@ -7,6 +7,7 @@ import           Control.Monad.ST
 import           Control.Monad.Trans
 import           Control.Monad.Trans.State
 import           Data.Array ((!))
+import           Data.Array.ST
 import           Data.Graph (Vertex)
 import qualified Data.Graph as G
 import           Data.Maybe
@@ -17,6 +18,7 @@ import qualified Data.Set as Set
 
 import           ShortCut
 import qualified Queue
+import           STArray
 
 data Graph node = Graph { graph :: G.Graph, vertexToNode :: Vertex -> node }
 
@@ -197,3 +199,70 @@ search (Graph graph _) start end  = runShortCutT' $ evalStateT bfs emptyState
               enqueue v
           markNodeAs u Visited
       return False
+
+-- Exercise 4.3
+-- ============
+-- Given a sorted (increasing order) array with unique integer elements, write an
+-- algorithm to create a binary search tree
+
+-- Creates a minial BST tree from the given array
+-- Supposing that the array is sorted
+createMinimalBST :: STArray s Int Int -> ST s (Tree Int)
+createMinimalBST array = do
+  (start, end) <- getBounds array
+  create start end
+  where
+    create start end | end < start = return Empty
+    create start end = do
+      let mid = (start + end) `div` 2
+      Node <$> (array @: mid)
+           <*> (create start (mid - 1))
+           <*> (create (mid + 1) end)
+
+testCreateMinimalBST = runST (fromList [1,2,4,6,8,10] >>= createMinimalBST)
+
+-- Exercise 4.4
+-- ============
+-- Given a binary tree design an algorithm which creates a linked list of all the nodes
+-- at each depth.
+
+leveledLists :: Tree a -> Map Int [Tree a]
+leveledLists = go Map.empty 0 where
+  go m  level Empty = m
+  go m0 level n@(Node x left right) =
+    let m1 = insert level n m0
+        m2 = go m1 (level + 1) left
+        m3 = go m2 (level + 1) right
+    in m3
+    where
+      insert k x m = case Map.lookup k m of
+        Nothing -> Map.insert k [x]    m
+        Just xs -> Map.insert k (x:xs) m
+
+-- Exercise 4.5
+-- ============
+-- Implement a function to check if a binary tree is a binary search tree.
+
+checkBST :: (Ord a) => Tree a -> Bool
+checkBST = go Nothing Nothing where
+  go _ _ Empty = True
+  go min max (Node x left right) =
+     and [ fromMaybe True $ fmap (x >)  min
+         , fromMaybe True $ fmap (x <=) max
+         , go min (Just x) left
+         , go (Just x) max right
+         ]
+
+-- Exercise 4.6
+-- ============
+-- Write an algorithm to find the 'next' node of a given node in a binary
+-- search tree.
+
+inorderSuc :: Tree a -> [Tree a]
+inorderSuc = reverse . go [] where
+  go xs  Empty = Empty:xs
+  go xs0 n@(Node _ left right) =
+    let xs1 = go (xs0)   left
+        xs2 = n:xs1
+        xs3 = go xs2 right
+    in xs3

@@ -4,6 +4,7 @@ module ArraysAndStrings where
 import Control.Monad.ST
 import Data.Char
 import Data.Array.ST
+import STArray
 
 -- Exercise 1.3
 import Control.Monad
@@ -13,13 +14,6 @@ import Data.List
 -- ============
 -- Implement an algorithm to determine if a string has all unique charachters.
 -- What if you cannot use additional data structures?
-
-newSTArray :: Ix i => (i, i) -> e -> ST s (STArray s i e)
-newSTArray = newArray
-
-(@:) :: Ix i => STArray s i e -> i -> ST s e
-(@:) array idx = readArray array idx
-{-# INLINE (@:) #-}
 
 isUniqueChars :: String -> Bool
 isUniqueChars str | length str > 256 = False
