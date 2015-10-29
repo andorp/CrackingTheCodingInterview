@@ -3,11 +3,14 @@ module TreesAndGraphs where
 import           Control.Applicative
 import           Control.Arrow
 import           Control.Monad
+import           Control.Monad.Identity
 import           Control.Monad.ST
 import           Control.Monad.Trans
 import           Control.Monad.Trans.State
+import           Control.Monad.Trans.Writer
 import           Data.Array ((!))
 import           Data.Array.ST
+import           Data.Either
 import           Data.Graph (Vertex)
 import qualified Data.Graph as G
 import           Data.Maybe
@@ -16,7 +19,7 @@ import qualified Data.Map as Map
 import           Data.Set (Set)
 import qualified Data.Set as Set
 
-import           ShortCut
+import           ShortCut hiding (either)
 import qualified Queue
 import           STArray
 
@@ -92,6 +95,10 @@ data Tree a
   = Empty
   | Node a (Tree a) (Tree a)
   deriving (Eq, Show)
+
+isEmpty :: Tree a -> Bool
+isEmpty Empty = True
+isEmpty _     = False
 
 -- Exercise 4.1
 -- ============
@@ -259,10 +266,76 @@ checkBST = go Nothing Nothing where
 -- search tree.
 
 inorderSuc :: Tree a -> [Tree a]
-inorderSuc = reverse . go [] where
+inorderSuc = filter (not . isEmpty) . reverse . go [] where
   go xs  Empty = Empty:xs
   go xs0 n@(Node _ left right) =
     let xs1 = go (xs0)   left
         xs2 = n:xs1
         xs3 = go xs2 right
     in xs3
+
+-- Exercise 4.7
+-- ============
+-- Design an algorithm and write code to find the first common ancestor of two
+-- nodes in a binary tree. Avoid storing additional nodes in a data structure.
+
+commonAncestor :: (Eq a) => a -> a -> Tree a -> Maybe (Tree a)
+commonAncestor p q = result . go
+  where
+    result = join . fmap (either (const Nothing) Just)
+    go Empty = Nothing
+    go n@(Node x left right)
+      | x == p && x == q = Just (Right n)
+      | x == p = Just (Left n)
+      | x == q = Just (Left n)
+      | otherwise = case (go left, go right) of
+          (Nothing, Nothing)               -> Nothing
+          (Just (Left _), Just (Left _))   -> Just (Right n)
+          (Just (Right _), Just (Right _)) -> error "Duplicate common ancestor"
+          (s@(Just (Left l)), Nothing)     -> s
+          (Nothing, t@(Just (Left r)))     -> t
+          (c@(Just (Right _)), _)          -> c
+          (_, c@(Just (Right _)))          -> c
+
+-- Exercise 4.8
+-- ============
+-- Create an algorithm if T2 is a subtree of T1
+
+matchTree :: (Eq a) => Tree a -> Tree a -> Bool
+matchTree _     Empty     = True
+matchTree Empty (Node {}) = False
+matchTree (Node x left right) (Node y left' right')
+  = and [x == y, matchTree left left', matchTree right right']
+
+subTree :: (Eq a) => Tree a -> Tree a -> Bool
+subTree Empty _ = False
+subTree r@(Node x left right) s@(Node y _ _)
+  | x == y && matchTree r s = True
+  | otherwise = subTree left s || subTree right s
+
+-- Exercise 4.9
+-- ============
+-- You are given a binary tree in which each node contains an integer
+-- value (which might be positive or negative). Design an algorithm
+-- to print all the paths which sum to a given value. The path
+-- does not need to start or end at the root or a leaf, but it must
+-- go in a straight line down.
+
+findSumsTest :: [[Int]]
+findSumsTest = snd . runIdentity $ runWriterT (findSums 7 testCreateMinimalBST)
+
+findSums :: (Eq n, Num n, Monad m) => n -> Tree n -> WriterT [[n]] m ()
+findSums s = go [] where
+  printSums = foldM_ printSumAndStep ([],0)
+  printSumAndStep (xs,z) x = do
+    let xxs = x:xs
+    let zx  = z + x
+    when (zx == s) $ tell [xxs]
+    return (xxs, zx)
+
+  go _  Empty = return ()
+  go xs (Node x left right) = do
+    let xxs = x:xs
+    printSums xxs
+    go xxs left
+    go xxs right
