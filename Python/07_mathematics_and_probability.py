@@ -13,9 +13,8 @@ EPSILON = 0.0000001
 
 
 def intersect(line1, line2):
-    return
-        abs(line1.slope - line2.slope) > EPSILON ||
-        abs(line1.yintercept - line2.yintercept < EPSILON)
+    return abs(line1.slope - line2.slope) > EPSILON or \
+           abs(line1.yintercept - line2.yintercept < EPSILON)
 
 
 # Exercise 7.4
@@ -60,63 +59,86 @@ def devide(a, b):
     x = 0
     while product + absa <= absb:
         product += absb
-        x++
+        x += 1
 
     if (a < 0 and b < 0) or (a > 0 and b > 0):
         return x
     else:
         return negate(x)
 
-# Exercise 7.5
+# Exercise 7.7
 # ============
-# Given two squares on a two-dimensional plane, find a line that would cut
-# these two squares in half. Assume that the top and the bottom sides of the
-# square run parallel to the x-axis
+# Design an algorithm to find the kth number such that the only  prime
+# factors are 3,5, and 7
 
-class Point:
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
+class Queue:
+    def __init__(self):
+        self.queue = []
 
-def extend(mid1, mid2, size):
-    xdir = -1 if mid1.x < mid2.x else 1
-    ydir = -1 if mid1.y > mid1.y else 1
+    def enqueue(self, item):
+        self.queue.append(item)
 
-    if mid1.x == mid2.x:
-        return Point(mid1.x, mid1,y + ydir * size / 2.0)
+    def dequeue(self):
 
-    slope = (mid1.y - mid2.y) / (mid1.x - mid2.x)
-    x1 = 0.0
-    y1 = 0.0
+        if self.is_empty():
+            return None
 
-    if abs(slope) == 1.0:
-        x1 = mid1.x + xdir * size / 2.0
-        y1 = mid1.y + ydir * size / 2.0
-    elif abs(slope) < 1:
-        x1 = mid1.x + xdir * size / 2.0
-        y1 = slope * (x1 - mid1.x) + mid1.y
-    else:
-        y1 = mid1.y + ydir * size / 2.0
-        x1 = (y1 - mid1.y) / slope + mid1.x
+        item = self.queue[0]
+        self.queue.pop(0)
+        return item
 
-    return Point(x1, y1)
+    def is_empty(self):
+        return not bool(self.queue)
 
-class Square:
-    def __init__(self, left, right, top, bottom):
-        self.left = left
-        self.right = right
-        self.top = top
-        self.bottom = bottom
+    def peek(self):
 
-    def middle():
-        return Point(
-            (self.left + self.right) / 2.0,
-            (self.top + self.bottom) / 2.0
-        )
+        if self.is_empty():
+            return None
 
-    def size():
-        raise Error("BLAH")
+        return self.queue[0]
 
-def cut(this, other):
-    p1 = extend(this.middle(), other.middle(), this.size())
-    p2 = extend(thi)
+def test_queue():
+    q = Queue()
+    print q.is_empty()
+    q.enqueue(1)
+    print q.peek()
+    print q.is_empty()
+    print q.dequeue()
+    print q.is_empty()
+
+def get_magic_kth_number(k):
+
+    if k < 0:
+        return 0
+
+    val = 0
+    queue3 = Queue()
+    queue5 = Queue()
+    queue7 = Queue()
+    queue3.enqueue(1)
+
+    for i in range(0,k + 1):
+        v3 = queue3.peek()
+        v5 = queue5.peek()
+        v7 = queue7.peek()
+
+        val = min(filter(lambda x: x is not None, [v3,v5,v7]))
+        if val == v3:
+            queue3.dequeue()
+            queue3.enqueue(3 * val)
+            queue5.enqueue(5 * val)
+        elif val == v5:
+            queue5.dequeue()
+            queue5.enqueue(5 * val)
+        elif val == v7:
+            queue7.dequeue()
+        queue7.enqueue(7 * val)
+
+    return val
+
+def test_magic():
+    print get_magic_kth_number(0)
+    print get_magic_kth_number(1)
+    print get_magic_kth_number(2)
+    print get_magic_kth_number(10)
+    print get_magic_kth_number(100)
