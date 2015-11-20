@@ -1,4 +1,4 @@
-module StacksAndQueues where
+ module StacksAndQueues where
 
 import Control.Applicative hiding (empty)
 import Control.Monad.ST

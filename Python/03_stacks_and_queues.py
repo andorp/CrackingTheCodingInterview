@@ -271,7 +271,7 @@ class MyQueue:
 
 def two_stack_sort(stack):
     result = Stack()
-    while not s.is_empty():
+    while not stack.is_empty():
         tmp = stack.pop()
         while not result.is_empty() and result.peek() > tmp:
             stack.push(result.pop())

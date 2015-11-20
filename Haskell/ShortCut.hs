@@ -10,14 +10,14 @@ import Control.Monad.State.Class
 import Control.Monad.Trans
 
 {-
-Helps to implement imperative algorithms in monad context,
+Helps to implement imperative algorithms in a monadic context,
 introducing a shortcut computation. The shortcut behaves
 like a the `return` statement in imperative languages, it
 terminates the computation with the given final result.
 -}
 
 -- ShortCut Monad Transformer
-data ShortCutT r m a = ShortCutT { unShortCutT :: m (Either r a) }
+newtype ShortCutT r m a = ShortCutT { unShortCutT :: m (Either r a) }
 
 -- ShortCut Monad
 type ShortCut r a = ShortCutT r Identity a
@@ -89,7 +89,7 @@ either :: (Monad m) => (Either r a) -> ShortCutT r m a
 either (Left r)  = final r
 either (Right a) = return a
 
--- Catche the final value of the computation
+-- Catches the final value of the computation
 -- and converts it to a partial result, or
 -- use the result of the normal computation
 partial :: (Monad m) => ShortCutT r m r -> ShortCutT r m r
